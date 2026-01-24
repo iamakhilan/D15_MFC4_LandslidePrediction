@@ -25,15 +25,15 @@ This project implements and compares two approaches for forecasting landslide di
 ### 1. Training on "Random" Data
 **The Problem:** Normal models (like Deep Learning or standard Regression) usually require thousands of data points to understand a trend and often fail when data is "noisy" or "meagre".
 
-**The Grey Solution:** By using the **1-AGO (1-order Accumulated Generating Operation)**, we transform that random, "jagged" sensor data into a smooth exponential curve ($x^{(1)}$). This allows the model to "see" the underlying physics of the landslide even if the sensors are fluctuating.
+**The Grey Solution:** By using the **1-AGO (1-order Accumulated Generating Operation)**, we transform that random, "jagged" sensor data into a smooth exponential curve `x^(1)`. This allows the model to "see" the underlying physics of the landslide even if the sensors are fluctuating.
 
 ### 2. The Training and Correction Phase
-- **Parameter Estimation:** We use the historical data points to find the coefficients $a$ (velocity) and $b$ (driving force).
+- **Parameter Estimation:** We use the historical data points to find the coefficients `a` (velocity) and `b` (driving force).
 - **Error Learning:** We don't just ignore the mistakes the Grey Model makes; we use **Fourier analysis** to "learn" the pattern of those errors (the residuals).
 - **Hybrid Prediction:** We add that learned error back to the Grey prediction, making the model "ready" and highly tuned to the specific behavior of that slope.
 
 ### 3. Predicting the "Unseen"
-- **The Goal:** Once the model is "ready," we can feed it a time step that has not happened yet (e.g., Day $n+1$).
+- **The Goal:** Once the model is "ready," we can feed it a time step that has not happened yet (e.g., Day `n+1`).
 - **The Verdict:** The model will output a predicted displacement. If that predicted value exceeds a safety threshold (like 10mm of movement in an hour), we can definitively say, "A landslide is likely occurring or imminent".
 
 ---
@@ -60,7 +60,9 @@ k = 1:n;
 
 We simulate the original data using the equation:
 
-$$ x^{(0)}(k) = x_0 + \text{Trend} + \text{Seasonal} + \text{Noise} $$
+```
+x^(0)(k) = x0 + Trend + Seasonal + Noise
+```
 
 Code implementation:
 ```matlab
@@ -71,31 +73,38 @@ x0 = 5 + 0.35*k + 1.2*sin(2*pi*k/8) + 0.3*randn(1,n);
 x0 = abs(x0);
 ```
 
-- **The Baseline ($5$):** Initial state or steady-state elevation.
-- **The Growth Trend ($0.35k$):** Creep deformation/gravity.
-- **The Seasonal/Periodic Component ($1.2\sin(...)$):** Seasonal rainfall or snowmelt cycles.
-- **The Stochastic Noise ($0.3\text{randn}$):** Sensor errors and environmental jitter.
+- **The Baseline (5):** Initial state or steady-state elevation.
+- **The Growth Trend (0.35k):** Creep deformation/gravity.
+- **The Seasonal/Periodic Component (1.2sin(...)):** Seasonal rainfall or snowmelt cycles.
+- **The Stochastic Noise (0.3randn):** Sensor errors and environmental jitter.
 
 ---
 
 ## Part A: Classical GM(1,1) + Fourier
 
 ### The Accumulated Generating Operation (AGO)
-To find the value of $x^{(1)}$:
-$$ x^{(1)}(k) = \sum_{i=1}^k x^{(0)}(i) $$
-Where $x^{(1)}$ is the **1-order Accumulated Generating Operation Sequence**.
+To find the value of `x^(1)`:
+
+```
+x^(1)(k) = Σ x^(0)(i)   (sum from i=1 to k)
+```
+
+Where `x^(1)` is the **1-order Accumulated Generating Operation Sequence**.
 
 ```matlab
 x1 = cumsum(x0);
 ```
 
 ### Background Value Sequence
-$$ z^{(1)}(k) = \lambda x^{(1)}(k) + (1-\lambda)x^{(1)}(k-1) $$
-Where $\lambda$ is usually 0.5, but can be adjusted. $\lambda$ controls how the background value balances current and previous accumulated states.
+```
+z^(1)(k) = λ * x^(1)(k) + (1-λ) * x^(1)(k-1)
+```
 
-- **$\lambda \approx 0.5$:** Standard/Linear Growth.
-- **$\lambda < 0.5$:** High-growth (rapidly accelerating).
-- **$\lambda > 0.5$:** Decelerating or approaching a plateau.
+Where `λ` (lambda) is usually 0.5, but can be adjusted. `λ` controls how the background value balances current and previous accumulated states.
+
+- **`λ ≈ 0.5`:** Standard/Linear Growth.
+- **`λ < 0.5`:** High-growth (rapidly accelerating).
+- **`λ > 0.5`:** Decelerating or approaching a plateau.
 
 ```matlab
 % Background value
@@ -104,35 +113,47 @@ z1 = lambda*x1(2:end) + (1-lambda)*x1(1:end-1);
 ```
 
 ### 1. Derivation of Parameter Estimation
-We use **Regularized Least Squares (Ridge Regression)** to find parameters $a$ and $b$ for the discrete Grey equation:
-$$ x^{(0)}(k) + a z^{(1)}(k) = b $$
+We use **Regularized Least Squares (Ridge Regression)** to find parameters `a` and `b` for the discrete Grey equation:
 
-In matrix form $Y = B\hat{\theta}$:
-- $B = [-z^{(1)}, 1]$ (Data Matrix)
-- $Y = [x^{(0)}(2), \dots, x^{(0)}(n)]^T$ (Constant Vector)
+```
+x^(0)(k) + a * z^(1)(k) = b
+```
+
+In matrix form `Y = Bθ`:
+- `B = [-z^(1), 1]` (Data Matrix)
+- `Y = [x^(0)(2), ..., x^(0)(n)]^T` (Constant Vector)
 
 ```matlab
 B = [-z1', ones(n-1,1)];
 Y = x0(2:end)';
 ```
 
-**Step 1:** Minimize the Cost Function $J(\hat{\theta})$ with respect to $\hat{\theta}$, including a regularization term $\lambda_r$ to prevent overfitting:
-$$ J(\hat{\theta}) = (Y - B\hat{\theta})^T (Y - B\hat{\theta}) + \lambda_r \hat{\theta}^T \hat{\theta} $$
+**Step 1:** Minimize the Cost Function `J(θ)` with respect to `θ`, including a regularization term `λ_r` to prevent overfitting:
 
-**Why minimize w.r.t $\hat{\theta}$?** To find optimal parameters that make predicted movement close to actual measurements while keeping the model simple.
+```
+J(θ) = (Y - Bθ)^T (Y - Bθ) + λ_r * θ^T θ
+```
 
-**The role of $a$ and $b$:**
-- **$a$ (Development Coefficient):** Determines growth/decay trend. Small negative value = steady creep; change in $a$ = potential acceleration.
-- **$b$ (Grey Driving Coefficient):** Represents external influence/driving force (e.g., rainfall).
+**Why minimize w.r.t `θ`?** To find optimal parameters that make predicted movement close to actual measurements while keeping the model simple.
+
+**The role of `a` and `b`:**
+- **`a` (Development Coefficient):** Determines growth/decay trend. Small negative value = steady creep; change in `a` = potential acceleration.
+- **`b` (Grey Driving Coefficient):** Represents external influence/driving force (e.g., rainfall).
 
 **Step 2:** Expand the norms (using matrix properties).
 
-**Step 3:** Differentiate with respect to $\hat{\theta}$:
-$$ \frac{\partial J}{\partial \hat{\theta}} = -2B^T Y + 2B^T B\hat{\theta} + 2\lambda_r \hat{\theta} = 0 $$
+**Step 3:** Differentiate with respect to `θ`:
 
-**Step 4:** Solve for $\hat{\theta}$:
-$$ (B^T B + \lambda_r I)\hat{\theta} = B^T Y $$
-$$ \hat{\theta} = (B^T B + \lambda_r I)^{-1} B^T Y $$
+```
+∂J/∂θ = -2B^T Y + 2B^T Bθ + 2λ_r θ = 0
+```
+
+**Step 4:** Solve for `θ`:
+
+```
+(B^T B + λ_r I)θ = B^T Y
+θ = (B^T B + λ_r I)^(-1) B^T Y
+```
 
 ```matlab
 % Parameter estimation
@@ -144,18 +165,27 @@ b = theta(2);
 
 ### 2. Whitenization Equation
 The whitenization equation converts the discrete model into a continuous ODE:
-$$ \frac{dx^{(1)}}{dt} + ax^{(1)} = b $$
+
+```
+dx^(1)/dt + a * x^(1) = b
+```
 
 **Solution (Time Response Function):**
-$$ \hat{x}^{(1)}(k) = \left(x^{(0)}(1) - \frac{b}{a}\right)e^{-a(k-1)} + \frac{b}{a} $$
+
+```
+x^(1)_hat(k) = (x^(0)(1) - b/a) * e^(-a(k-1)) + b/a
+```
 
 ```matlab
 % Time response
 x1_hat = (x1(1) - b/a)*exp(-a*(k-1)) + b/a;
 ```
 
-**Restore $\hat{x}^{(0)}$ (Inverse AGO):**
-$$ \hat{x}^{(0)}(k) = \hat{x}^{(1)}(k) - \hat{x}^{(1)}(k-1) $$
+**Restore `x^(0)_hat` (Inverse AGO):**
+
+```
+x^(0)_hat(k) = x^(1)_hat(k) - x^(1)_hat(k-1)
+```
 
 ```matlab
 % Restore x^(0)
@@ -167,7 +197,9 @@ end
 ```
 
 **Residuals:**
-$$ \epsilon(k) = x^{(0)}(k) - \hat{x}^{(0)}(k) $$
+```
+ε(k) = x^(0)(k) - x^(0)_hat(k)
+```
 
 ```matlab
 res_gm = x0 - x0_hat_gm
@@ -177,10 +209,13 @@ res_gm = x0 - x0_hat_gm
 We use FFT to identify and model structured periodic patterns in the residual errors that GM(1,1) cannot capture.
 
 **Why FFT instead of DFT?**
-The `fft(x)` function returns the exact same values as the DFT formula but is much faster ($O(N \log N)$ vs $O(N^2)$).
+The `fft(x)` function returns the exact same values as the DFT formula but is much faster (`O(N log N)` vs `O(N^2)`).
 
 **The Equations of Discrete Fourier Transform:**
-$$ E(k) = \sum_{n=0}^{N-1} e(n) \cdot e^{-i \frac{2\pi}{N} kn} $$
+
+```
+E(k) = Σ e(n) * e^(-i * (2π/N) * kn)   (sum from n=0 to N-1)
+```
 
 **Implementation:**
 1.  **Compute FFT of residuals:**
@@ -188,7 +223,7 @@ $$ E(k) = \sum_{n=0}^{N-1} e(n) \cdot e^{-i \frac{2\pi}{N} kn} $$
     E = fft(res_gm)
     magE = abs(E) % Magnitude Spectrum
     ```
-2.  **Identify Dominant Frequencies:** Truncate to keep top $K$ frequencies.
+2.  **Identify Dominant Frequencies:** Truncate to keep top `K` frequencies.
     ```matlab
     K = 3;
     [~, idx] = sort(magE(2:floor(n/2)), 'descend');
@@ -216,14 +251,14 @@ $$ E(k) = \sum_{n=0}^{N-1} e(n) \cdot e^{-i \frac{2\pi}{N} kn} $$
 ## Part B: Metabolic GM(1,1) + Fourier
 
 ### What Does the "Sliding Window" Mean?
-The sliding window $L$ represents the most recent $L$ observations used to build the model at time $t$. By discarding older data, the metabolic model adapts to time-varying system behavior.
+The sliding window `L` represents the most recent `L` observations used to build the model at time `t`. By discarding older data, the metabolic model adapts to time-varying system behavior.
 
 ```matlab
 L = 5;   % sliding window size
 ```
 
 ### Window Prediction
-For each step, we use data from $t-L$ to $t-1$ to predict $t$.
+For each step, we use data from `t-L` to `t-1` to predict `t`.
 
 ```matlab
 x0_hat_meta = zeros(1,n);
@@ -306,11 +341,11 @@ The project includes visualization of:
     -   *Benefit:* Understands the "cause" (e.g., rain) not just the movement.
 
 2.  **Adaptive Fourier Truncation:**
-    -   *Current:* Fixed $K=3$ frequencies.
+    -   *Current:* Fixed `K=3` frequencies.
     -   *Proposed:* Energy-based selection (e.g., 95% variance).
     -   *Benefit:* Adapts to new noise patterns (e.g., soil cracking vibrations).
 
-3.  **Dynamic Optimization of Horizontal Control Parameter $\lambda$:**
-    -   *Current:* Fixed $\lambda = 0.6$.
-    -   *Proposed:* Genetic Algorithm or PSO to find optimal $\lambda$ per window.
+3.  **Dynamic Optimization of Horizontal Control Parameter λ:**
+    -   *Current:* Fixed `λ = 0.6`.
+    -   *Proposed:* Genetic Algorithm or PSO to find optimal `λ` per window.
     -   *Benefit:* Adapts "curvature" during rapid acceleration phases.
