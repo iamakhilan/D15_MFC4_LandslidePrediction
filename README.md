@@ -128,6 +128,7 @@ Preonzo Dataset (.xlsx)
 | `L` | 5 | Minimum window for GM(1,1); keeps model responsive to rapid changes |
 | `λ` | 0.6 | Weighted toward current observation; suitable for moderately accelerating slope |
 | `λ_r` | 0.1 | Minimum ridge penalty to stabilize the 2×2 system from L=5 without shrinking `a` |
+| $\lambda_r$ | 0.1 | Minimum ridge penalty to stabilize the 2×2 system from L=5 without shrinking `a` |
 | `K` | 3 | Maps to 3 physically real periodic drivers of Preonzo displacement |
 | `ω₁` | 100 | Amplifies normalized error so 2% deviation crosses the warning threshold |
 | `ω₂` | 5 | Scales acceleration as secondary contributor; prevents false warnings from normal seasonal acceleration alone |
