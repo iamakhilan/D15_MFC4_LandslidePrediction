@@ -1,270 +1,223 @@
-# 🌋 Hybrid Grey–Fourier Landslide Forecasting
+# Hybrid Grey-Fourier Landslide Forecasting
 
-A MATLAB-based project that predicts landslide displacement using **Grey System Theory** and **Fourier error correction**, designed for accurate forecasting from small and noisy sensor data.
-
----
-
-## ✨ Overview
-Landslide prediction is challenging because real-world sensor data is **noisy**, **short**, and often **nonlinear**.  
-This project combines:
-
-- **Grey System Theory (GM(1,1))** → strong with limited data  
-- **Fourier Transform (FFT)** → corrects periodic residual errors  
-
-✅ Result: **better accuracy + early warning capability**
+Done by:
+- Dhakshin N — CB.SC.U4AIE24313
+- Rohith Ravi — CB.SC.U4AIE24350
+- Sanjay Kumar S — CB.SC.U4AIE24354
+- Akhilan S — CB.SC.U4AIE24362
 
 ---
 
-## 📂 Dataset
+## What is this project about?
 
-- **Name:** Preonzo Landslide Dataset  
-- **Source:** Real sensor measurements from the Preonzo slope, Switzerland  
-- **Format:** `.xlsx`  
-- **Columns:**  
-  - **E1, E2, E3** → displacement velocity (mm)  
-- **Size:** ~37,000–38,500 data points per sensor  
-- **Known Event:** landslide failure around **index 36,302–37,105**
+We are trying to predict landslide movement before it actually happens. To do that, we use sensor data from a real slope in Switzerland called Preonzo. The sensors measure how fast the ground is moving, in millimeters per day.
 
----
+The problem is, this sensor data is very noisy and messy. Normal prediction models don't work well with noisy data. So we use a special model called GM(1,1) which was made for exactly this kind of situation — small, uncertain data.
 
-## 🧠 Key Concepts (Beginner‑Friendly)
+But GM(1,1) alone still makes some errors. So on top of that, we use FFT (a math technique) to find the pattern in those errors and correct them. This combination is what we call the Hybrid Grey-Fourier model.
 
-### GM(1,1)
-A Grey Model for forecasting when data is limited or noisy.
-
-$$ \frac{dx^{(1)}}{dt} + ax^{(1)} = b $$
-
-### AGO (Accumulated Generating Operation)
-Smooths noisy data.
-
-$$ x^{(1)}(k) = \sum_{i=1}^{k} x^{(0)}(i) $$
-
-### Error Metrics
-Used to compare model accuracy.
-
-$$ RMSE = \sqrt{\frac{1}{n} \sum (y_i - \hat{y}_i)^2} $$  
-$$ MAE = \frac{1}{n} \sum |y_i - \hat{y}_i| $$  
-$$ MAPE = \frac{100}{n} \sum \left|\frac{y_i - \hat{y}_i}{y_i}\right| $$
+We also built a risk index that tells us when a landslide is about to happen, using the prediction results.
 
 ---
 
-## 🛠️ Methodology
+## Dataset
 
-1. Read sensor data  
-2. Apply GM(1,1)  
-3. Compute residuals  
-4. Apply FFT correction  
-5. Generate improved predictions  
-6. Forecast future displacement  
+We used a real dataset from the Preonzo landslide site in Switzerland. It has daily extensometer (ground movement) readings starting from May 2002.
 
----
+- File: `Preonzo Landslide dataset.xlsx`
+- Sheet: `Extensometer data`
+- Total rows: around 38,906
+- Columns we used: E1, E2, E3 (displacement velocity in mm/day)
+- The actual landslide happened around row 36,302 to 37,105 in the E1 sensor data
 
-## 🔬 Model Variants
-
-- **Classical GM(1,1) + Fourier**  
-- **Metabolic GM(1,1) + Fourier (sliding window)**  
-
-**Metabolic GM(1,1)** adapts over time and gives higher accuracy.
+Note: E3 has some missing values in the beginning. We remove those before doing anything.
 
 ---
 
-## 🚨 Risk Index (Early Warning)
+## How does our model work? (simple explanation)
 
-$$
-R(k) = \left( \frac{\left|x^{(0)}(k) - \hat{x}^{(0)}_{\text{final}}(k)\right|}{x^{(0)}(k)} \right)\times 100 + |a(k)| \times 5
-$$
+**Step 1 — Smooth the noisy data**
 
-### 🔎 Meaning of Terms
+Raw sensor data jumps up and down randomly. We add up all the values one by one (called AGO — Accumulated Generating Operation). This turns a noisy signal into a smooth curve that is easier to work with.
 
-| Symbol | Meaning |
-|--------|---------|
-| $x^{(0)}(k)$ | actual displacement |
-| $\hat{x}^{(0)}_{\text{final}}(k)$ | predicted value |
-| $a(k)$ | development coefficient |
-| $\omega_1 = 100$ | error weight |
-| $\omega_2 = 5$ | acceleration weight |
-| $RT = 1.75$ | threshold |
+**Step 2 — Fit the Grey Model**
 
-### ✅ Decision Logic
+We fit GM(1,1) on this smooth curve. This model finds two numbers, `a` and `b`, that describe how the ground is moving. `a` tells us how fast the movement is changing and `b` is the constant driving force (like continuous rainfall pushing the soil).
 
-- **IF** $R(k) > 1.75$ → **Advanced Warning**  
-- **ELSE** → **Safe**
+We use Ridge Regression to find `a` and `b`. This just means we add a small penalty to stop the model from overfitting (memorizing noise instead of learning the real pattern).
 
----
+**Step 3 — Correct the errors using FFT**
 
-## ✅ Additional Experiment: Soil Strain Forecasting
+Even after GM(1,1), there are still some leftover errors. These errors are not random — they repeat in a pattern because landslides are affected by seasons, rainfall cycles and so on. We use FFT to find the top 3 repeating patterns in these errors and correct the prediction.
 
-A separate experiment was added using **soil strain data from a different location**.  
-The full MATLAB code is documented inside **Updated Report.mlx**.
+**Step 4 — Two versions of the model**
 
-### 📊 Result Plot
+We built two versions and compared them:
 
-<img>
+- Classical GM(1,1) + Fourier: fits the model once using all past data
+- Metabolic GM(1,1) + Fourier: uses only the last 5 data points and updates itself at every step. This is more accurate because it adjusts to recent changes in the ground behavior.
 
-### 📊  Graph shows
+**Step 5 — Risk index**
 
- plotted:
-
-```
-plot(x0,'k')              % Black → Actual
-plot(x0_hat_gm_final,'r--')   % Red → GM + Fourier
-plot(x0_hat_meta_final,'b--') % Blue → Metabolic GM
-```
-<img width="465" height="292" alt="Diff place result" src="https://github.com/user-attachments/assets/5e29a27c-a739-4b0d-97d2-813771a2dce0" />
-
-### 🧠 Meaning of each line
-
-⚫ **Black line — Actual data**
-
-👉 This is  real sensor data (Soil Strain)
-
-- What actually happened in the ground
-- Real deformation over time
-
-🔴 **Red line — GM + Fourier**
-
-👉 This is  model prediction (classical GM)
-
-- GM captures trend
-- Fourier corrects error
-
-👉 So this is  improved prediction
-
-🔵 **Blue line — Metabolic GM**
-
-👉 This is adaptive prediction
-
-- Uses only recent data (window = 5)
-- Updates continuously
-
-### 🔍 How to read the graph
-
-✔ **If lines overlap**
-
-👉 GOOD model
-
-Black ≈ Red ≈ Blue
-
-Means:
-
-- prediction is accurate
-- model understands data
-
-❌ **If lines are far apart**
-
-👉 BAD model
-
-Means:
-
-- prediction is wrong
-- model assumptions failed
-
-### 📈 What  graph shows
-
-From  result:
-
-👉 All lines are very close
-
-👉 Graph looks almost flat around ~1
+We calculate a risk number at each time step. If this number goes above 1.75, we raise an Advanced Warning. Otherwise it shows Safe. We do this for all 3 sensors and average them to get a global risk value.
 
 ---
 
-## 📏 Evaluation Metrics
-- **RMSE** → penalizes large errors  
-- **MAE** → average absolute error  
-- **MAPE** → percentage error  
+## The math (just the key parts)
+
+AGO — smoothing the data:
+
+x1(k) = x0(1) + x0(2) + ... + x0(k)
+
+Grey model prediction:
+
+x1_hat(k) = (x0(1) - b/a) × e^(-a(k-1)) + b/a
+
+We get back the original scale by taking the difference between consecutive predicted values:
+
+x0_hat(k) = x1_hat(k) - x1_hat(k-1)
+
+Finding a and b using Ridge Regression:
+
+theta = (B'B + lambda_r × I) \ (B'Y)   where lambda_r = 0.1
+
+Risk index formula:
+
+R(k) = (|actual - predicted| / actual × 100) + (|a(k)| × 5)
+
+If R(k) > 1.75 → Advanced Warning, else → Safe
+
+Global risk (average of all 3 sensors):
+
+risk_global = (risk_E1 + risk_E2 + risk_E3) / 3
 
 ---
 
-## 📈 Results
+## Why did we pick these values?
 
-- Hybrid model improves accuracy  
-- Captures both long‑term trend + periodic behavior  
-- Provides early warning before failure  
-
----
-
-## 🧰 Technologies Used
-
-- **MATLAB**  
-- **FFT**  
-- **Grey System Theory**
+- Window size L = 5: L=5 means the model only looks at the last 5 readings at each step. This is small enough to react quickly to changes in the slope but large enough to still have enough points to estimate a and b reliably.
+- lambda = 0.6: The Preonzo data shows moderate acceleration. Setting lambda above 0.5 puts more weight on the current state, which fits this behavior better.
+- lambda_r = 0.1: Small enough to not over-restrict the model, but enough to keep the estimation stable.
+- K = 3 (FFT components): For the Preonzo sensor data, there are three known physical cycles — yearly seasonal rainfall, half-yearly, and shorter atmospheric cycles. So we keep the top 3 frequency components from FFT to capture all of them.
+- Risk threshold RT = 1.75: We looked at where the risk values spike during the known failure event and chose 1.75 as the cutoff that catches the warning without too many false alarms.
 
 ---
 
-## ▶️ How to Run (IMPORTANT)
+## What each graph shows
 
-⚠️ **The Global Risk Monitoring file depends on workspace variables.**
+**Graph 1 — AGO plot (first 50 points)**
 
-### ✅ Execution Order
+Shows x0 (original noisy data) and x1 (the accumulated smooth version) together. You can see how messy the raw data is and how AGO makes it smooth. If x1 is not going steadily upward, something is wrong with the data.
 
-**Step 1**  
-- Run: `Real_data_Coding_E2_sensor.mlx`  
-- Creates: `risk_values_2`
+**Graph 2 — Error before and after FFT**
 
-**Step 2**  
-- Run: `Real_data_coding_E3_sensor.mlx`  
-- Creates: `risk_values_3`
+Shows the leftover error from GM(1,1) before FFT correction (the messy line) and the FFT-reconstructed version (the periodic line). If FFT is working correctly, the reconstructed line should match the repeating pattern of the original error — meaning it picked up the seasonal cycles hiding in the residuals.
 
-**Step 3**  
-- Run: `Global_risk_monitoring_report.mlx`  
-- This file:
-  - Generates `risk_values_1` internally  
-  - Uses `risk_values_2` and `risk_values_3`  
-  - Computes:
-    ```
-    risk_values = (risk_values_1 + risk_values_2 + risk_values_3) / 3
-    ```
-  - Generates final plots  
+**Graph 3 — Original vs Predicted (full data)**
 
-✅ **Note:** E1 standalone file can run independently.
+Shows the actual sensor reading and our model prediction on the same graph. They should follow each other closely across all 38,000+ points.
+
+**Graph 4 — Displacement and Risk plot (full dataset)**
+
+Left axis: actual and predicted displacement. Right axis: blue bars showing the risk value at each point. The orange dashed line is the threshold at 1.75. The bars should mostly stay below 1.75 and only spike near the actual failure event.
+
+**Graph 5 — Zoomed plot near the failure event**
+
+Same as Graph 4 but zoomed into the time range where the landslide actually happened. This is the most important graph to check. If the risk bars clearly cross 1.75 during this window, our early warning is working correctly.
+
+**Graph 6 — Global risk monitoring (two subplots)**
+
+Top subplot: E1 displacement with the global risk line (average of all 3 sensors). Bottom subplot: all three individual sensor risks plus the global average. The global risk is more stable than any single sensor because averaging reduces noise.
+
+**Graph 7 — Zoomed global risk at the failure event**
+
+Same zoomed window as Graph 5 but using global risk. This confirms that all three sensors agree on the warning, not just one sensor acting up.
+
+**Graph 8 — Soil strain experiment (Updated Report)**
+
+A separate test using soil strain data from a different location. Three lines: actual (black solid), GM+Fourier prediction (red dashed), Metabolic GM prediction (blue dashed). The X axis goes up to about 38,000 time steps and the Y axis shows soil strain going from 0 to nearly 900. For most of the range all three lines follow each other very closely, which means both models are tracking well. Near the end (around index 35,000 onwards) there is a sharp upward spike — this is where the failure happens. The lines start to separate slightly here, and this is exactly where the Metabolic model performs better because it is updating itself using recent data while the Classical GM is still relying on old patterns. The RMSE difference (19.47 vs 3.01) comes mainly from this end region.
+
+
+![Landslide Prediction using Soil Strain](d:\mfc-4 update\Result.png)
+.
+---
+
+## How we measure accuracy
+
+We use three numbers to check how good the predictions are:
+
+RMSE: penalizes big errors more heavily. Lower is better.
+
+MAE: average of all errors without any extra penalty. Lower is better.
+
+MAPE: error shown as a percentage. Useful when comparing across different sensors.
+
+### Our results (from Updated Report — soil strain experiment)
+
+| Model | RMSE | MAE |
+|-------|------|-----|
+| Classical GM(1,1) + Fourier | 19.4761 | 8.5648 |
+| Metabolic GM(1,1) + Fourier | 3.0129 | 1.6074 |
+
+The Metabolic model is clearly better here. Its RMSE dropped from 19.47 to 3.01 and MAE dropped from 8.56 to 1.61. This shows that updating the model using only recent data (sliding window of 5) works much better than fitting once on all the data, especially when the ground behavior is changing over time.
+
+
+
+
 
 ---
 
-## ⏱️ Execution Time &amp; Performance
+## How to run the code
 
-Uses MATLAB `tic/toc`.
+You have to run the files in this order. The global file needs results from E2 and E3 files first.
 
-| File | Sensor | Time |
-|------|--------|------|
-| E2 file | E2 | 2.32s |
-| E3 file | E3 | 3.24s |
-| Global file | E1 + Global | 3.24s |
-| **Total** | All | **9.09s** |
+Step 1 — Run `Real_data_Coding_E2_sensor.mlx`
+Processes E2 sensor. Saves a variable called `risk_values_2` in the MATLAB workspace.
 
----
+Step 2 — Run `Real_data_coding_E3_sensor.mlx`
+Processes E3 sensor. Saves `risk_values_3`.
 
-## 🖥️ Platform &amp; Hardware
+Step 3 — Run `Global_risk_monitoring_report.mlx`
+Processes E1, then picks up `risk_values_2` and `risk_values_3` from the workspace, combines all three, and generates the final global risk plots.
 
-- **CPU:** Intel Core i7  
-- **RAM:** 16GB  
-- **OS:** Windows 11  
-- **MATLAB:** R2024a  
-
-**Notes:**
-- Execution time varies ±0.3s  
-- CPU-only (no GPU)  
-- Linear scaling with dataset size  
+`Updated_Report.mlx` can be run on its own at any time. It does not depend on the other files.
 
 ---
 
-## 🔮 Future Improvements
+## How long it takes
 
-- Extend to **GM(1,N)**  
-- Adaptive Fourier selection  
-- Multi-sensor fusion models  
+| File | Time |
+|------|------|
+| E2 sensor file | 2.32 seconds |
+| E3 sensor file | 3.24 seconds |
+| Global monitoring file | 3.53 seconds |
+| Total | 9.09 seconds |
 
----
-
-## 👥 Authors
-
-- Dhakshin N — CB.SC.U4AIE24313  
-- Rohith Ravi — CB.SC.U4AIE24350  
-- Sanjay Kumar S — CB.SC.U4AIE24354  
-- Akhilan S — CB.SC.U4AIE24362  
+Measured using tic/toc in MATLAB. Time can vary a little depending on the computer.
 
 ---
 
-## 📚 References
+## Tools used
 
-- *Grey Data Analysis: Methods, Models and Applications* (Computational Risk Management)
+- MATLAB R2024a
+- FFT (built into MATLAB, no extra toolbox needed)
+- Grey System Theory — GM(1,1) model
+- Ridge Regression for finding model parameters
+
+Tested on Windows 11, Intel Core i7, 16GB RAM. No GPU needed.
+
+---
+
+## What can be improved later
+
+Right now we only use one sensor variable at a time. It would be better to feed in multiple inputs like rainfall and temperature alongside displacement using GM(1,N).
+
+We also fixed K=3 for FFT. It would be smarter to let the code automatically pick the right number of frequency components based on how the data looks.
+
+The lambda value is fixed at 0.6 for all time steps. In reality, the ground sometimes speeds up and sometimes slows down, so lambda should ideally change based on what the recent data is doing.
+
+---
+
+## Reference
+
+Liu, S., Yang, Y., & Forrest, J. (2017). Grey Data Analysis: Methods, Models and Applications. Springer.
