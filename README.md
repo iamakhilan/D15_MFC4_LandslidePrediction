@@ -66,31 +66,23 @@ We calculate a risk number at each time step. If this number goes above 1.75, we
 ## The math (just the key parts)
 
 
-AGO — smoothing the data:
+### GM(1,1)
+A Grey Model for forecasting when data is limited or noisy.
 
-x1(k) = x0(1) + x0(2) + ... + x0(k)
+$$ \frac{dx^{(1)}}{dt} + ax^{(1)} = b $$
 
-Grey model prediction:
+### AGO (Accumulated Generating Operation)
+Smooths noisy data.
 
-x1_hat(k) = (x0(1) - b/a) × e^(-a(k-1)) + b/a
+$$ x^{(1)}(k) = \sum_{i=1}^{k} x^{(0)}(i) $$
 
-We get back the original scale by taking the difference between consecutive predicted values:
+### Error Metrics
+Used to compare model accuracy.
 
-x0_hat(k) = x1_hat(k) - x1_hat(k-1)
+$$ RMSE = \sqrt{\frac{1}{n} \sum (y_i - \hat{y}_i)^2} $$  
+$$ MAE = \frac{1}{n} \sum |y_i - \hat{y}_i| $$  
+$$ MAPE = \frac{100}{n} \sum \left|\frac{y_i - \hat{y}_i}{y_i}\right| $$
 
-Finding a and b using Ridge Regression:
-
-theta = (B'B + lambda_r × I) \ (B'Y)   where lambda_r = 0.1
-
-Risk index formula:
-
-R(k) = (|actual - predicted| / actual × 100) + (|a(k)| × 5)
-
-If R(k) > 1.75 → Advanced Warning, else → Safe
-
-Global risk (average of all 3 sensors):
-
-risk_global = (risk_E1 + risk_E2 + risk_E3) / 3
 
 ---
 
