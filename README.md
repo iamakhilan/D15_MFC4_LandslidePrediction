@@ -65,6 +65,7 @@ We calculate a risk number at each time step. If this number goes above 1.75, we
 
 ## The math (just the key parts)
 
+
 AGO — smoothing the data:
 
 x1(k) = x0(1) + x0(2) + ... + x0(k)
@@ -138,8 +139,8 @@ Same zoomed window as Graph 5 but using global risk. This confirms that all thre
 A separate test using soil strain data from a different location. Three lines: actual (black solid), GM+Fourier prediction (red dashed), Metabolic GM prediction (blue dashed). The X axis goes up to about 38,000 time steps and the Y axis shows soil strain going from 0 to nearly 900. For most of the range all three lines follow each other very closely, which means both models are tracking well. Near the end (around index 35,000 onwards) there is a sharp upward spike — this is where the failure happens. The lines start to separate slightly here, and this is exactly where the Metabolic model performs better because it is updating itself using recent data while the Classical GM is still relying on old patterns. The RMSE difference (19.47 vs 3.01) comes mainly from this end region.
 
 
-![Landslide Prediction using Soil Strain](d:\mfc-4 update\Result.png)
-.
+![Landslide Prediction using Soil Strain](Graph.jpeg)
+
 ---
 
 ## How we measure accuracy
@@ -162,9 +163,6 @@ MAPE: error shown as a percentage. Useful when comparing across different sensor
 The Metabolic model is clearly better here. Its RMSE dropped from 19.47 to 3.01 and MAE dropped from 8.56 to 1.61. This shows that updating the model using only recent data (sliding window of 5) works much better than fitting once on all the data, especially when the ground behavior is changing over time.
 
 
-
-
-
 ---
 
 ## How to run the code
@@ -180,7 +178,7 @@ Processes E3 sensor. Saves `risk_values_3`.
 Step 3 — Run `Global_risk_monitoring_report.mlx`
 Processes E1, then picks up `risk_values_2` and `risk_values_3` from the workspace, combines all three, and generates the final global risk plots.
 
-`Updated_Report.mlx` can be run on its own at any time. It does not depend on the other files.
+`New-Updated-Report.mlx` can be run on its own at any time. It does not depend on the other files.
 
 ---
 
