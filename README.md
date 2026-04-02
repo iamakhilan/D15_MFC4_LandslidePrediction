@@ -98,35 +98,35 @@ $$ MAPE = \frac{100}{n} \sum \left|\frac{y_i - \hat{y}_i}{y_i}\right| $$
 
 ## What each graph shows
 
-**Graph 1 — AGO plot (first 50 points)**
+**1 — AGO plot (first 50 points)**
 
 Shows x0 (original noisy data) and x1 (the accumulated smooth version) together. You can see how messy the raw data is and how AGO makes it smooth. If x1 is not going steadily upward, something is wrong with the data.
 
-**Graph 2 — Error before and after FFT**
+**2 — Error before and after FFT**
 
 Shows the leftover error from GM(1,1) before FFT correction (the messy line) and the FFT-reconstructed version (the periodic line). If FFT is working correctly, the reconstructed line should match the repeating pattern of the original error — meaning it picked up the seasonal cycles hiding in the residuals.
 
-**Graph 3 — Original vs Predicted (full data)**
+**3 — Original vs Predicted (full data)**
 
 Shows the actual sensor reading and our model prediction on the same graph. They should follow each other closely across all 38,000+ points.
 
-**Graph 4 — Displacement and Risk plot (full dataset)**
+**4 — Displacement and Risk plot (full dataset)**
 
 Left axis: actual and predicted displacement. Right axis: blue bars showing the risk value at each point. The orange dashed line is the threshold at 1.75. The bars should mostly stay below 1.75 and only spike near the actual failure event.
 
-**Graph 5 — Zoomed plot near the failure event**
+**5 — Zoomed plot near the failure event**
 
 Same as Graph 4 but zoomed into the time range where the landslide actually happened. This is the most important graph to check. If the risk bars clearly cross 1.75 during this window, our early warning is working correctly.
 
-**Graph 6 — Global risk monitoring (two subplots)**
+**6 — Global risk monitoring (two subplots)**
 
 Top subplot: E1 displacement with the global risk line (average of all 3 sensors). Bottom subplot: all three individual sensor risks plus the global average. The global risk is more stable than any single sensor because averaging reduces noise.
 
-**Graph 7 — Zoomed global risk at the failure event**
+**7 — Zoomed global risk at the failure event**
 
 Same zoomed window as Graph 5 but using global risk. This confirms that all three sensors agree on the warning, not just one sensor acting up.
 
-**Graph 8 — Soil strain experiment (Updated Report)**
+**8 — Soil strain experiment (Updated Report)**
 
 A separate test using soil strain data from a different location. Three lines: actual (black solid), GM+Fourier prediction (red dashed), Metabolic GM prediction (blue dashed). The X axis goes up to about 38,000 time steps and the Y axis shows soil strain going from 0 to nearly 900. For most of the range all three lines follow each other very closely, which means both models are tracking well. Near the end (around index 35,000 onwards) there is a sharp upward spike — this is where the failure happens. The lines start to separate slightly here, and this is exactly where the Metabolic model performs better because it is updating itself using recent data while the Classical GM is still relying on old patterns. The RMSE difference (19.47 vs 3.01) comes mainly from this end region.
 
